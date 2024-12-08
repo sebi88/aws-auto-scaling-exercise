@@ -1,0 +1,15 @@
+version: 0.1
+# sample: https://github.com/infracost/infracost/blob/master/infracost-usage-example.yml
+
+resource_usage:
+  aws_sqs_queue.task_queue:
+    monthly_requests: 876000 # avg 20 msg/lambda, send-recieve
+
+  aws_lambda_function.producer:
+    monthly_requests: 43800
+
+  aws_nat_gateway.nat_gateway:
+    monthly_data_processed_gb: 1
+
+  aws_autoscaling_group.consumer:
+    instances: 5

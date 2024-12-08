@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# debug logs: 
+# journalctl -f -u  consumer.timer -u consumer.service
+
+cat << 'EOF' > /opt/consumer.sh
+#!/bin/bash
+RECEIPT_HANDLE=$(aws sqs receive-message --max-number-of-message 1 --queue-url ${sqs_url} | jq -r '.Messages[0].ReceiptHandle')
+
+if [[ -z "$RECEIPT_HANDLE" ]]; then
+    echo "No message"
+else
+    aws sqs delete-message --queue-url ${sqs_url} --receipt-handle "$RECEIPT_HANDLE"
+    echo "Message processed."
+fi
+EOF
+chmod 540 /opt/consumer.sh
+chown ec2-user:ec2-user /opt/consumer.sh
+
+
+cat << 'EOF' > /etc/systemd/system/consumer.service
+[Unit]
+Description=Consumer service
+
+[Service]
+Restart=on-failure
+User=ec2-user
+ExecStart=/opt/consumer.sh
+EOF
+
+
+cat << 'EOF' > /etc/systemd/system/consumer.timer
+[Unit]
+Description="Run consumer.service in every 15sec"
+
+[Timer]
+OnUnitActiveSec=10
+AccuracySec=1
+Unit=consumer.service
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable consumer.timer
+systemctl start consumer.timer
+systemctl enable consumer.service
+systemctl start consumer.service
